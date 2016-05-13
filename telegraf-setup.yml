@@ -1,0 +1,62 @@
+---
+
+- hosts: selenium-cluster
+  gather_facts: true
+  vars:
+     influxdb_host: 10.111.1.52
+     influxdb_port: 8086
+     app_tag: selenium-grid
+     telegraf_configuration: templates/telegraf.conf.j2
+  user: ubuntu
+  tasks:
+  - name: Gather EC2 Metadata Information
+    action: ec2_facts
+    tags:
+     - telegraf-monitoring
+  - name: Add InfluxDB Repository Signing Key
+    become: yes
+    become_method: sudo
+    apt_key: url=https://repos.influxdata.com/influxdb.key state=present
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    tags:
+     - telegraf-monitoring
+  - name: Add InfluxDB Repository
+    become: yes
+    become_method: sudo
+    apt_repository: repo='deb https://repos.influxdata.com/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable'
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    tags:
+     - telegraf-monitoring
+  - name: Update Apt cache
+    become: yes
+    become_method: sudo
+    apt: update_cache=yes
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    tags:
+     - telegraf-monitoring
+  - name: Install Telegraf
+    become: yes
+    become_method: sudo
+    apt: name={{ item }} state=present force=yes
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    with_items:
+     - telegraf
+    tags:
+     - telegraf-monitoring
+  - name: Copy Telegraf configuration file
+    become: yes
+    become_method: sudo
+    action: template src={{ telegraf_configuration }} dest=/etc/telegraf/telegraf.conf
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    tags:
+     - telegraf-monitoring
+  - name: Restart Telegraf
+    become: yes
+    become_method: sudo
+    service:
+       name: telegraf
+       state: restarted
+       enabled: yes
+    when: ansible_distribution == 'Ubuntu' and ansible_distribution_release == 'trusty'
+    tags:
+     - telegraf-monitoring
