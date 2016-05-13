@@ -1,5 +1,16 @@
 ---
 
+- hosts: localhost
+  connection: local
+  vars:
+     ssh_known_hosts: /root/.ssh/known_hosts
+  tasks:
+  - name: Add Instances to known_hosts file
+    action: sshknownhosts host={{ item }} dest={{ ssh_known_hosts }} state=present
+    with_items: '{{selenium-cluster}}'
+    tags:
+     - telegraf-monitoring
+
 - hosts: selenium-cluster
   gather_facts: true
   vars:
